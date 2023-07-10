@@ -1,0 +1,136 @@
+---
+- name: install borg
+  hosts: all
+  become: yes
+
+  tasks:
+  - name: install repo
+    yum: name=epel-release state=latest
+
+  - name: isntall borg
+    yum: name=borgbackup state=latest
+
+- name: creat borg
+  hosts: backup
+  become: yes
+
+  tasks:
+  - name: user borg
+    shell:
+     cmd: useradd -m borg
+    become: yes
+
+  - name: set borg pass
+    shell:
+     cmd: echo "borg:borg" | chpasswd
+    become: yes
+
+  - name: create backup directory
+    file:
+     path: /var/backup
+     state: directory
+     owner: borg
+     group: borg
+     mode: 0755
+
+  - name:  create .ssh directory
+    file:
+     path: /home/borg/.ssh
+     state: directory
+     owner: borg
+     group: borg
+     mode: 0700
+
+  - name: create authorized_keys file
+    file:
+      path: /home/borg/.ssh/authorized_keys
+      state: touch
+      owner: borg
+      group: borg
+      mode: 0600
+    become: yes
+
+- name: key ssh client
+  hosts: client
+  become: yes
+
+  tasks:
+    - name: Generate SSH keypair
+      openssh_keypair:
+        path: /root/.ssh/id_rsa
+        type: rsa
+        size: 4096
+
+    - name: Fetch SSH public key
+      fetch:
+        src: ~/.ssh/id_rsa.pub
+        dest: ./tmp/id_rsa.pub
+      delegate_to: client
+
+- name:  auth backup
+  hosts: backup
+  become: yes
+
+  tasks:
+    - name: Add SSH public key to authorized keys
+      authorized_key:
+        user: borg
+        state: present
+        key: "{{ lookup('file', 'tmp/id_rsa.pub/client/root/.ssh/id_rsa.pub') }}"
+      become: yes
+
+    - name: restart sshd
+      shell:
+       cmd: systemctl restart sshd.service
+      become: yes
+
+- name: conf ssh client
+  hosts: client
+  become: yes
+
+  tasks:
+    - name: client ssh conf
+      copy:
+       src: /home/spa/backup/tmp/ssh_config
+       dest: /etc/ssh/ssh_config
+
+- name: Initialize BorgBackup repository with passphrase
+  hosts: client
+  become: true
+
+  tasks:
+    - name: Initialize Borg repository
+      command: borg init --encryption=repokey borg@192.168.56.160:/var/backp/
+      environment:
+        BORG_PASSCOMMAND: echo "otus1234"
+
+- name: kopirovanie scripov na client
+  hosts: client
+  become: yes
+
+  tasks:
+    - name: Copy borg-backup.service
+      copy:
+        src: ./tmp/borg-backup.service
+        dest: /etc/systemd/system/borg-backup.service
+
+    - name: Copy borg-backup.timer
+      copy:
+        src: ./tmp/borg-backup.timer
+        dest: /etc/systemd/system/borg-backup.timer
+
+    - name: zadestvovat borg slugbu
+      shell:
+        cmd: systemctl enable borg-backup.timer
+
+    - name: zadestvovat timers
+      shell:
+        cmd: systemctl enable borg-backup.timer
+
+    - name: start timers
+      shell:
+        cmd: systemctl start borg-backup.timer
+
+    - name: start service
+      shell:
+        cmd: systemctl start borg-backup.service
