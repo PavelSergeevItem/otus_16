@@ -102,7 +102,7 @@
     - name: Initialize Borg repository
       command: borg init --encryption=repokey borg@192.168.56.160:/var/backp/
       environment:
-        BORG_PASSCOMMAND: echo "otus1234"
+        BORG_PASSCOMMAND: echo "Otus1234"
 
 - name: kopirovanie scripov na client
   hosts: client
