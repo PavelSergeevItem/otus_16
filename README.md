@@ -12,9 +12,11 @@
 7. настроено логирование процесса бекапа. Для упрощения можно весь вывод перенаправлять в logger с соответствующим тегом. Если настроите не в syslog, то обязательна ротация логов.
 
  **2. Выполенение задания.**
-1. Основываясь на задание. На хост машине создал директорияю, в нее создал вагрантфайл, также все осатльные файлы нужные для настройки удаленных хостов: hosts, pasword.yml, anasible.cfg. В директори проекта создал поддиректорию tmp где содержаться временные файл. 
+1. Основываясь на задание. На хост машине создал директорияю, в нее создал вагрантфайл, также все осатльные файлы нужные для настройки удаленных хостов: hosts, pasword.yml, anasible.cfg. В директори проекта создал поддиректорию tmp где содержаться временные файл . 
 2. На основе задания и ранее созданных файлом, создал файл borg.yml -- плейбук для настройки обоих удаленных хостов.
 3. Находясь в папке проекта запустил плейбук. Убедился, что он отработал без ошибок.
+   `sudo ansible-playbook borg.yml`
+   
    ```
 PLAY [install borg] *************************************************************************************************************************************
 
@@ -80,4 +82,44 @@ PLAY RECAP *********************************************************************
 client                     : ok=15   changed=11   unreachable=0    failed=0    skipped=0    rescued
 ```
 4. Находясь в папке проекта подлкючился по ssh к хосту client. и проверил работу службы и таймера, также наличие созадание бекапа.
+```
+[root@client ~]# systemctl list-timers --all
+NEXT                         LEFT     LAST                         PASSED    UNIT                     
+Mon 2023-07-10 20:15:02 UTC  5s left  Mon 2023-07-10 20:06:51 UTC  8min ago  borg-backup.timer        
+Tue 2023-07-11 19:47:01 UTC  23h left Mon 2023-07-10 19:47:01 UTC  27min ago systemd-tmpfiles-clean.ti
+n/a                          n/a      n/a                          n/a       systemd-readahead-done.ti
+
+3 timers listed.
+lines 1-6/6 (END)
+```
+```
+[root@client ~]# systemctl status borg-backup.service
+● borg-backup.service - Borg Backup
+   Loaded: loaded (/etc/systemd/system/borg-backup.service; static; vendor preset: disabled)
+   Active: inactive (dead) since Mon 2023-07-10 20:15:29 UTC; 32s ago
+  Process: 10338 ExecStart=/bin/borg prune --keep-daily 90 --keep-monthly 12 --keep-yearly 1 ${REPO} (code=exited, status=0/SUCCESS)
+  Process: 10333 ExecStart=/bin/borg check ${REPO} (code=exited, status=0/SUCCESS)
+  Process: 10329 ExecStart=/bin/borg create --stats ${REPO}::etc-{now:%%Y-%%m-%%d_%%H:%%M:%%S} ${BACKUP_TARGET} (code=exited, status=0/SUCCESS)
+ Main PID: 10338 (code=exited, status=0/SUCCESS)
+
+Jul 10 20:15:25 client borg[10329]: Number of files: 1700
+Jul 10 20:15:25 client borg[10329]: Utilization of max. archive size: 0%
+Jul 10 20:15:25 client borg[10329]: -----------------------------------------------------------...----
+Jul 10 20:15:25 client borg[10329]: Original size      Compressed size    Deduplicated size
+Jul 10 20:15:25 client borg[10329]: This archive:               28.43 MB             13.49 MB  ...9 kB
+Jul 10 20:15:25 client borg[10329]: All archives:               56.86 MB             26.99 MB  ...7 MB
+Jul 10 20:15:25 client borg[10329]: Unique chunks         Total chunks
+Jul 10 20:15:25 client borg[10329]: Chunk index:                    1282                 3392
+Jul 10 20:15:25 client borg[10329]: -----------------------------------------------------------...----
+Jul 10 20:15:29 client systemd[1]: Started Borg Backup.
+Hint: Some lines were ellipsized, use -l to show in full.
+[root@client ~]# 
+```
+
+```
+[root@client ~]# borg list borg@192.168.56.160:/var/backup/
+Enter passphrase for key ssh://borg@192.168.56.160/var/backup: 
+etc-2023-07-10_20:15:23              Mon, 2023-07-10 20:15:24 [3838119a8fcfac04a9e12ee50dd96a1f37b796bd7b9ec594ceb25ceb060ddb42]
+```
+
 5. Написал отчет в редми, залили нужные файлы для проверки на гитхаб. 
