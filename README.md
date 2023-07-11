@@ -82,7 +82,10 @@ PLAY RECAP *********************************************************************
 client                     : ok=15   changed=11   unreachable=0    failed=0    skipped=0    rescued
 ```
 
+
 4. Находясь в папке проекта подлкючился по ssh к хосту client. и проверил работу службы и таймера, также наличие созадание бекапа.
+
+
 ```
 [root@client ~]# systemctl list-timers --all
 NEXT                         LEFT     LAST                         PASSED    UNIT                     
@@ -93,6 +96,7 @@ n/a                          n/a      n/a                          n/a       sys
 3 timers listed.
 lines 1-6/6 (END)
 ```
+
 ```
 [root@client ~]# systemctl status borg-backup.service
 ● borg-backup.service - Borg Backup
